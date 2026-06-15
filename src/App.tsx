@@ -13,6 +13,26 @@ import EvaluationStats from './components/EvaluationStats';
 
 const DEFAULT_ROLES = ['실습자', '예비', '상황판 작성', '평가표 작성 1', '평가표 작성 2'];
 
+function OrderModeButtons({ value, onChange }: { value: OrderMode; onChange: (mode: OrderMode) => void; }) {
+  return (
+    <div className="flex gap-1.5">
+      {([['sequential', '순차'], ['random', '랜덤']] as [OrderMode, string][]).map(([val, label]) => (
+        <button
+          key={val}
+          onClick={() => onChange(val)}
+          className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
+            value === val
+              ? 'bg-blue-600 text-white'
+              : 'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-blue-300 dark:hover:border-blue-600'
+          }`}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function App() {
   const [darkMode, setDarkMode] = useState(() =>
     window.matchMedia('(prefers-color-scheme: dark)').matches
@@ -22,6 +42,8 @@ export default function App() {
   const [teamMode, setTeamMode] = useState<TeamMode>('none');
   const [alternatingMode, setAlternatingMode] = useState<AlternatingMode>('none');
   const [orderMode, setOrderMode] = useState<OrderMode>('sequential');
+  const [groupAOrderMode, setGroupAOrderMode] = useState<OrderMode>('sequential');
+  const [groupBOrderMode, setGroupBOrderMode] = useState<OrderMode>('sequential');
   const [roles, setRoles] = useState<string[]>(DEFAULT_ROLES);
   const [totalRounds, setTotalRounds] = useState(10);
   const [assignments, setAssignments] = useState<RoleAssignment[]>([]);
@@ -72,7 +94,19 @@ export default function App() {
   }
 
   function generate() {
-    const result = generateAssignments(trainees, roles, totalRounds, teamMode, alternatingMode, groupFilter, orderMode);
+    const result = generateAssignments(
+      trainees,
+      roles,
+      totalRounds,
+      teamMode,
+      alternatingMode,
+      groupFilter,
+      orderMode,
+      {
+        A: groupAOrderMode,
+        B: groupBOrderMode,
+      }
+    );
     setAssignments(result);
     setGenerated(true);
     setTimeout(() => {
@@ -330,26 +364,42 @@ export default function App() {
             </div>
 
             {/* Order Mode */}
-            <div className="flex flex-wrap items-center gap-3">
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300 w-24">배정 순서</span>
-              <div className="flex gap-2">
-                {([['sequential', '순차'], ['random', '랜덤']] as [OrderMode, string][]).map(([val, label]) => (
-                  <button
-                    key={val}
-                    onClick={() => setOrderMode(val)}
-                    className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                      orderMode === val
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300 w-24">배정 순서</span>
+                <div className="flex gap-2">
+                  {([['sequential', '순차'], ['random', '랜덤']] as [OrderMode, string][]).map(([val, label]) => (
+                    <button
+                      key={val}
+                      onClick={() => setOrderMode(val)}
+                      className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                        orderMode === val
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                {orderMode === 'random' && (
+                  <span className="text-xs text-gray-400 dark:text-gray-500">배정 생성 시마다 순서가 달라집니다</span>
+                )}
               </div>
-              {orderMode === 'random' && (
-                <span className="text-xs text-gray-400 dark:text-gray-500">배정 생성 시마다 순서가 달라집니다</span>
-              )}
+
+              <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 p-3 space-y-2">
+                <p className="text-xs text-gray-500 dark:text-gray-400">반별 순서 옵션 (A반 / B반을 각각 다르게 설정할 수 있습니다)</p>
+                <div className="flex flex-wrap gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">A반</span>
+                    <OrderModeButtons value={groupAOrderMode} onChange={setGroupAOrderMode} />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">B반</span>
+                    <OrderModeButtons value={groupBOrderMode} onChange={setGroupBOrderMode} />
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 

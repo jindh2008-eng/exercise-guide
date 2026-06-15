@@ -1,4 +1,4 @@
-import type { Trainee, RoleAssignment, GroupFilter, TeamMode, AlternatingMode, OrderMode } from '../types';
+import type { Trainee, RoleAssignment, GroupFilter, TeamMode, AlternatingMode, OrderMode, GroupOrderModes } from '../types';
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
@@ -24,6 +24,18 @@ function getOrdered<T>(bases: T[][], activeCount: number): T[] {
   return [...base.slice(posInCycle), ...base.slice(0, posInCycle)];
 }
 
+function getGroupMode(group: 'A' | 'B', fallback: OrderMode, groupOrderModes?: GroupOrderModes): OrderMode {
+  return groupOrderModes?.[group] ?? fallback;
+}
+
+function rotateByMode<T>(items: T[], round: number, orderMode: OrderMode, cycleBases?: T[][]): T[] {
+  if (orderMode === 'random' && cycleBases) {
+    return getOrdered(cycleBases, round);
+  }
+  const offset = (round - 1) % (items.length || 1);
+  return [...items.slice(offset), ...items.slice(0, offset)];
+}
+
 export function filterTrainees(trainees: Trainee[], filter: GroupFilter): Trainee[] {
   if (filter === 'all') return trainees;
   return trainees.filter(t => t.group === filter);
@@ -41,7 +53,8 @@ export function generateAssignments(
   teamMode: TeamMode,
   alternatingMode: AlternatingMode,
   groupFilter: GroupFilter,
-  orderMode: OrderMode = 'sequential'
+  orderMode: OrderMode = 'sequential',
+  groupOrderModes?: GroupOrderModes
 ): RoleAssignment[] {
   const filtered = filterTrainees(trainees, groupFilter);
   const results: RoleAssignment[] = [];
@@ -52,11 +65,18 @@ export function generateAssignments(
 
     for (let round = 1; round <= totalRounds; round++) {
       let ordered: Trainee[];
-      if (isRandom && cycleBases) {
+      if (groupFilter === 'all' && filtered.length > 0) {
+        const groupA = filtered.filter(t => t.group === 'A');
+        const groupB = filtered.filter(t => t.group === 'B');
+        const aBases = getGroupMode('A', orderMode, groupOrderModes) === 'random' ? makeCycleBases(groupA, totalRounds) : null;
+        const bBases = getGroupMode('B', orderMode, groupOrderModes) === 'random' ? makeCycleBases(groupB, totalRounds) : null;
+        const orderedA = rotateByMode(groupA, round, getGroupMode('A', orderMode, groupOrderModes), aBases ?? undefined);
+        const orderedB = rotateByMode(groupB, round, getGroupMode('B', orderMode, groupOrderModes), bBases ?? undefined);
+        ordered = [...orderedA, ...orderedB];
+      } else if (isRandom && cycleBases) {
         ordered = getOrdered(cycleBases, round);
       } else {
-        const offset = (round - 1) % (filtered.length || 1);
-        ordered = [...filtered.slice(offset), ...filtered.slice(0, offset)];
+        ordered = rotateByMode(filtered, round, orderMode);
       }
       const assignments: Record<string, string> = {};
       roles.forEach((role, i) => { assignments[role] = ordered[i % ordered.length]?.name ?? '—'; });

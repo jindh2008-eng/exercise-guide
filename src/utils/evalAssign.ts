@@ -14,10 +14,6 @@ function pickRandom<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-function isEligible(s: PersonState, round: number): boolean {
-  return s.lastEvaluatorRound === 0 || round - s.lastEvaluatorRound >= 3;
-}
-
 function sortEvaluatee(pool: PersonState[], round: number): PersonState[] {
   return [...pool].sort((a, b) => {
     if (a.evaluateeCount !== b.evaluateeCount) return a.evaluateeCount - b.evaluateeCount;
@@ -87,18 +83,10 @@ export function generateEvaluationAssignments(
     const toState = (members: Trainee[]) => members.map(t => states.get(t.name)!);
 
     // 평가자 선정
-    let eligiblePool = toState(assessedMembers).filter(s => isEligible(s, round));
-    if (eligiblePool.length === 0) {
-      eligiblePool = toState(assessedMembers).sort((a, b) => {
-        const aw = round - (a.lastEvaluatorRound || 0);
-        const bw = round - (b.lastEvaluatorRound || 0);
-        if (aw !== bw) return bw - aw;
-        return a.evaluateeCount - b.evaluateeCount;
-      });
-    }
+    const assessedPool = toState(assessedMembers);
     const evaluatee = isRandom
-      ? randomEvaluatee(eligiblePool)
-      : sortEvaluatee(eligiblePool, round)[0];
+      ? randomEvaluatee(assessedPool)
+      : sortEvaluatee(assessedPool, round)[0];
 
     // 평가관 3명 선정
     const evaluatorPool = toState(evaluatorMembers);

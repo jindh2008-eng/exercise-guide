@@ -17,6 +17,11 @@ export interface RoleAssignment {
 
 export type AppMode = 'practice' | 'evaluation';
 
+export interface GroupOrderModes {
+  A: OrderMode;
+  B: OrderMode;
+}
+
 export interface EvalAssignment {
   round: number;
   assessedGroup: 'A' | 'B';
