@@ -56,6 +56,8 @@ export default function App() {
   const [evalGenerated, setEvalGenerated] = useState(false);
   const [evalTotalRounds, setEvalTotalRounds] = useState(20);
   const [evalOrderMode, setEvalOrderMode] = useState<OrderMode>('sequential');
+  const [evalGroupAOrderMode, setEvalGroupAOrderMode] = useState<OrderMode>('sequential');
+  const [evalGroupBOrderMode, setEvalGroupBOrderMode] = useState<OrderMode>('sequential');
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode);
@@ -84,7 +86,15 @@ export default function App() {
   }, [filtered, roles, teamMode, alternatingMode, team1, trainees.length]);
 
   function generateEval() {
-    const { assignments: a, stats: s } = generateEvaluationAssignments(trainees, evalTotalRounds, evalOrderMode);
+    const { assignments: a, stats: s } = generateEvaluationAssignments(
+      trainees,
+      evalTotalRounds,
+      evalOrderMode,
+      {
+        A: evalGroupAOrderMode,
+        B: evalGroupBOrderMode,
+      }
+    );
     setEvalAssignments(a);
     setEvalStats(s);
     setEvalGenerated(true);
@@ -246,8 +256,12 @@ export default function App() {
               trainees={trainees}
               totalRounds={evalTotalRounds}
               orderMode={evalOrderMode}
+              groupAOrderMode={evalGroupAOrderMode}
+              groupBOrderMode={evalGroupBOrderMode}
               onRoundsChange={n => setEvalTotalRounds(n)}
               onOrderModeChange={setEvalOrderMode}
+              onGroupAOrderModeChange={setEvalGroupAOrderMode}
+              onGroupBOrderModeChange={setEvalGroupBOrderMode}
               onGenerate={generateEval}
             />
           </section>

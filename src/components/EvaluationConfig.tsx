@@ -4,12 +4,36 @@ interface Props {
   trainees: Trainee[];
   totalRounds: number;
   orderMode: OrderMode;
+  groupAOrderMode: OrderMode;
+  groupBOrderMode: OrderMode;
   onRoundsChange: (n: number) => void;
   onOrderModeChange: (m: OrderMode) => void;
+  onGroupAOrderModeChange: (m: OrderMode) => void;
+  onGroupBOrderModeChange: (m: OrderMode) => void;
   onGenerate: () => void;
 }
 
-export default function EvaluationConfig({ trainees, totalRounds, orderMode, onRoundsChange, onOrderModeChange, onGenerate }: Props) {
+function OrderModeButtons({ value, onChange }: { value: OrderMode; onChange: (mode: OrderMode) => void; }) {
+  return (
+    <div className="flex gap-1.5">
+      {([['sequential', '순차'], ['random', '랜덤']] as [OrderMode, string][]).map(([val, label]) => (
+        <button
+          key={val}
+          onClick={() => onChange(val)}
+          className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
+            value === val
+              ? 'bg-blue-600 text-white'
+              : 'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-blue-300 dark:hover:border-blue-600'
+          }`}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export default function EvaluationConfig({ trainees, totalRounds, orderMode, groupAOrderMode, groupBOrderMode, onRoundsChange, onOrderModeChange, onGroupAOrderModeChange, onGroupBOrderModeChange, onGenerate }: Props) {
   const nA = trainees.filter(t => t.group === 'A').length;
   const nB = trainees.filter(t => t.group === 'B').length;
 
@@ -66,26 +90,42 @@ export default function EvaluationConfig({ trainees, totalRounds, orderMode, onR
       </div>
 
       {/* 배정 순서 */}
-      <div className="flex flex-wrap items-center gap-3">
-        <span className="text-sm font-medium text-gray-700 dark:text-gray-300 w-24">배정 순서</span>
-        <div className="flex gap-2">
-          {([['sequential', '순차'], ['random', '랜덤']] as [OrderMode, string][]).map(([val, label]) => (
-            <button
-              key={val}
-              onClick={() => onOrderModeChange(val)}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                orderMode === val
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300 w-24">배정 순서</span>
+          <div className="flex gap-2">
+            {([['sequential', '순차'], ['random', '랜덤']] as [OrderMode, string][]).map(([val, label]) => (
+              <button
+                key={val}
+                onClick={() => onOrderModeChange(val)}
+                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                  orderMode === val
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          {orderMode === 'random' && (
+            <span className="text-xs text-gray-400 dark:text-gray-500">배정 생성 시마다 순서가 달라집니다</span>
+          )}
         </div>
-        {orderMode === 'random' && (
-          <span className="text-xs text-gray-400 dark:text-gray-500">배정 생성 시마다 순서가 달라집니다</span>
-        )}
+
+        <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 p-3 space-y-2">
+          <p className="text-xs text-gray-500 dark:text-gray-400">반별 순서 옵션 (A반/B반을 각각 다르게 설정할 수 있습니다)</p>
+          <div className="flex flex-wrap gap-4">
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">A반</span>
+              <OrderModeButtons value={groupAOrderMode} onChange={onGroupAOrderModeChange} />
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">B반</span>
+              <OrderModeButtons value={groupBOrderMode} onChange={onGroupBOrderModeChange} />
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* 경고 */}

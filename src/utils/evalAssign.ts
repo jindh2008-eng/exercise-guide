@@ -1,4 +1,4 @@
-import type { Trainee, EvalAssignment, TraineeStats, OrderMode } from '../types';
+import type { Trainee, EvalAssignment, TraineeStats, OrderMode, GroupOrderModes } from '../types';
 
 interface PersonState {
   name: string;
@@ -59,9 +59,9 @@ function randomEvaluators(pool: PersonState[]): PersonState[] {
 export function generateEvaluationAssignments(
   trainees: Trainee[],
   totalRounds: number,
-  orderMode: OrderMode = 'sequential'
+  orderMode: OrderMode = 'sequential',
+  groupOrderModes?: GroupOrderModes
 ): { assignments: EvalAssignment[]; stats: TraineeStats[] } {
-  const isRandom = orderMode === 'random';
   const states = new Map<string, PersonState>();
   for (const t of trainees) {
     states.set(t.name, {
@@ -79,18 +79,19 @@ export function generateEvaluationAssignments(
     const assessedGroup: 'A' | 'B' = round % 2 === 1 ? 'A' : 'B';
     const assessedMembers = assessedGroup === 'A' ? groupA : groupB;
     const evaluatorMembers = assessedGroup === 'A' ? groupB : groupA;
+    const currentOrderMode = groupOrderModes?.[assessedGroup] ?? orderMode;
+    const currentIsRandom = currentOrderMode === 'random';
 
     const toState = (members: Trainee[]) => members.map(t => states.get(t.name)!);
 
-    // 평가자 선정
     const assessedPool = toState(assessedMembers);
-    const evaluatee = isRandom
+    const evaluatee = currentIsRandom
       ? randomEvaluatee(assessedPool)
       : sortEvaluatee(assessedPool, round)[0];
 
     // 평가관 3명 선정
     const evaluatorPool = toState(evaluatorMembers);
-    const selectedEvaluators = isRandom
+    const selectedEvaluators = currentIsRandom
       ? randomEvaluators(evaluatorPool)
       : sortEvaluator(evaluatorPool, round).slice(0, 3);
 
