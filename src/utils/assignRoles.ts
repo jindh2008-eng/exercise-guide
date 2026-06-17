@@ -1,4 +1,4 @@
-import type { Trainee, RoleAssignment, GroupFilter, TeamMode, AlternatingMode, OrderMode, GroupOrderModes } from '../types';
+import type { Trainee, RoleAssignment, GroupFilter, TeamMode, AlternatingMode, OrderMode } from '../types';
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
@@ -9,11 +9,39 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
-// Pre-generate shuffled cycle bases so each cycle of `len` rounds gives each person each role exactly once
-function makeCycleBases<T>(arr: T[], totalRounds: number): T[][] {
-  const len = arr.length || 1;
-  const numCycles = Math.ceil(totalRounds / len);
-  return Array.from({ length: numCycles }, () => shuffle(arr));
+// Pre-generate shuffled cycle bases so each cycle of `len` rounds gives each person each role exactly once.
+// Avoids cross-epoch boundary collisions: the first round of epoch c+1 must not assign the
+// same person to the same role they had in the last round of epoch c.
+function makeCycleBases<T>(arr: T[], totalRounds: number, roleCount: number): T[][] {
+  const N = arr.length || 1;
+  const R = Math.min(roleCount, N);
+  const numCycles = Math.ceil(totalRounds / N);
+  const bases: T[][] = [];
+
+  for (let c = 0; c < numCycles; c++) {
+    const prevBase = bases[c - 1];
+    let base: T[];
+
+    if (!prevBase) {
+      base = shuffle(arr);
+    } else {
+      // In the last round of the previous epoch (posInCycle = N-1),
+      // role j was assigned to prevBase[(j + N - 1) % N].
+      // In the first round of the new epoch (posInCycle = 0),
+      // role j is assigned to newBase[j].
+      // Collision when newBase[j] === prevBase[(j + N - 1) % N] for any j < R.
+      const forbidden = Array.from({ length: R }, (_, j) => prevBase[(j + N - 1) % N]);
+      let attempts = 0;
+      do {
+        base = shuffle(arr);
+        attempts++;
+      } while (attempts < 30 && forbidden.some((f, j) => base[j] === f));
+    }
+
+    bases.push(base);
+  }
+
+  return bases;
 }
 
 function getOrdered<T>(bases: T[][], activeCount: number): T[] {
@@ -22,10 +50,6 @@ function getOrdered<T>(bases: T[][], activeCount: number): T[] {
   const posInCycle = (activeCount - 1) % len;
   const base = bases[cycleIdx] ?? bases[bases.length - 1];
   return [...base.slice(posInCycle), ...base.slice(0, posInCycle)];
-}
-
-function getGroupMode(group: 'A' | 'B', fallback: OrderMode, groupOrderModes?: GroupOrderModes): OrderMode {
-  return groupOrderModes?.[group] ?? fallback;
 }
 
 function rotateByMode<T>(items: T[], round: number, orderMode: OrderMode, cycleBases?: T[][]): T[] {
@@ -53,27 +77,18 @@ export function generateAssignments(
   teamMode: TeamMode,
   alternatingMode: AlternatingMode,
   groupFilter: GroupFilter,
-  orderMode: OrderMode = 'sequential',
-  groupOrderModes?: GroupOrderModes
+  orderMode: OrderMode = 'sequential'
 ): RoleAssignment[] {
   const filtered = filterTrainees(trainees, groupFilter);
   const results: RoleAssignment[] = [];
   const isRandom = orderMode === 'random';
 
   if (teamMode === 'none' || filtered.length === 0) {
-    const cycleBases = isRandom ? makeCycleBases(filtered, totalRounds) : null;
+    const cycleBases = isRandom ? makeCycleBases(filtered, totalRounds, roles.length) : null;
 
     for (let round = 1; round <= totalRounds; round++) {
       let ordered: Trainee[];
-      if (groupFilter === 'all' && filtered.length > 0) {
-        const groupA = filtered.filter(t => t.group === 'A');
-        const groupB = filtered.filter(t => t.group === 'B');
-        const aBases = getGroupMode('A', orderMode, groupOrderModes) === 'random' ? makeCycleBases(groupA, totalRounds) : null;
-        const bBases = getGroupMode('B', orderMode, groupOrderModes) === 'random' ? makeCycleBases(groupB, totalRounds) : null;
-        const orderedA = rotateByMode(groupA, round, getGroupMode('A', orderMode, groupOrderModes), aBases ?? undefined);
-        const orderedB = rotateByMode(groupB, round, getGroupMode('B', orderMode, groupOrderModes), bBases ?? undefined);
-        ordered = [...orderedA, ...orderedB];
-      } else if (isRandom && cycleBases) {
+      if (isRandom && cycleBases) {
         ordered = getOrdered(cycleBases, round);
       } else {
         ordered = rotateByMode(filtered, round, orderMode);
@@ -95,10 +110,10 @@ export function generateAssignments(
 
   if (isRandom) {
     if (alternatingMode === 'alternating') {
-      t1Bases = makeCycleBases(team1, Math.ceil(totalRounds / 2));
-      t2Bases = makeCycleBases(team2, Math.floor(totalRounds / 2) || 1);
+      t1Bases = makeCycleBases(team1, Math.ceil(totalRounds / 2), roles.length);
+      t2Bases = makeCycleBases(team2, Math.floor(totalRounds / 2) || 1, roles.length);
     } else {
-      combinedBases = makeCycleBases([...team1, ...team2], totalRounds);
+      combinedBases = makeCycleBases([...team1, ...team2], totalRounds, roles.length);
     }
   }
 

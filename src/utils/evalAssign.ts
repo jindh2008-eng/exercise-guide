@@ -1,4 +1,4 @@
-import type { Trainee, EvalAssignment, TraineeStats, OrderMode, GroupOrderModes } from '../types';
+import type { Trainee, EvalAssignment, TraineeStats, OrderMode } from '../types';
 
 interface PersonState {
   name: string;
@@ -59,8 +59,7 @@ function randomEvaluators(pool: PersonState[]): PersonState[] {
 export function generateEvaluationAssignments(
   trainees: Trainee[],
   totalRounds: number,
-  orderMode: OrderMode = 'sequential',
-  groupOrderModes?: GroupOrderModes
+  orderMode: OrderMode = 'sequential'
 ): { assignments: EvalAssignment[]; stats: TraineeStats[] } {
   const states = new Map<string, PersonState>();
   for (const t of trainees) {
@@ -74,13 +73,12 @@ export function generateEvaluationAssignments(
   const groupA = trainees.filter(t => t.group === 'A');
   const groupB = trainees.filter(t => t.group === 'B');
   const assignments: EvalAssignment[] = [];
+  const currentIsRandom = orderMode === 'random';
 
   for (let round = 1; round <= totalRounds; round++) {
     const assessedGroup: 'A' | 'B' = round % 2 === 1 ? 'A' : 'B';
     const assessedMembers = assessedGroup === 'A' ? groupA : groupB;
     const evaluatorMembers = assessedGroup === 'A' ? groupB : groupA;
-    const currentOrderMode = groupOrderModes?.[assessedGroup] ?? orderMode;
-    const currentIsRandom = currentOrderMode === 'random';
 
     const toState = (members: Trainee[]) => members.map(t => states.get(t.name)!);
 
